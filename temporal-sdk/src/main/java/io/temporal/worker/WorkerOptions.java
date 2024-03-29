@@ -63,6 +63,7 @@ public final class WorkerOptions {
     private static final Duration DEFAULT_DEFAULT_HEARTBEAT_THROTTLE_INTERVAL =
         Duration.ofSeconds(30);
 
+    private int maxActivityTaskPollPerPoller;
     private double maxWorkerActivitiesPerSecond;
     private int maxConcurrentActivityExecutionSize;
     private int maxConcurrentWorkflowTaskExecutionSize;
@@ -85,6 +86,7 @@ public final class WorkerOptions {
       if (o == null) {
         return;
       }
+      this.maxActivityTaskPollPerPoller = o.maxActivityTaskPollPerPoller;
       this.maxWorkerActivitiesPerSecond = o.maxWorkerActivitiesPerSecond;
       this.maxConcurrentActivityExecutionSize = o.maxConcurrentActivityExecutionSize;
       this.maxConcurrentWorkflowTaskExecutionSize = o.maxConcurrentWorkflowTaskExecutionSize;
@@ -100,6 +102,22 @@ public final class WorkerOptions {
       this.disableEagerExecution = o.disableEagerExecution;
       this.useBuildIdForVersioning = o.useBuildIdForVersioning;
       this.buildId = o.buildId;
+    }
+
+    /**
+     * @param maxActivityTaskPollPerPoller Maximum number of activity task a poller can run. Default
+     *     is 0 which means unlimited
+     * @return {@code this}
+     *     <p>When we want a poller to stop after polling N number of tasks. e.g. We want to use
+     *     worker for specific number of times, and then it die
+     */
+    public Builder setMaxActivityTaskPollPerPoller(int maxActivityTaskPollPerPoller) {
+      if (maxActivityTaskPollPerPoller < 0) {
+        throw new IllegalArgumentException(
+            "Negative maxActivityTaskPollPerPoller value: " + maxActivityTaskPollPerPoller);
+      }
+      this.maxActivityTaskPollPerPoller = maxActivityTaskPollPerPoller;
+      return this;
     }
 
     /**
@@ -351,6 +369,7 @@ public final class WorkerOptions {
 
     public WorkerOptions build() {
       return new WorkerOptions(
+          maxActivityTaskPollPerPoller,
           maxWorkerActivitiesPerSecond,
           maxConcurrentActivityExecutionSize,
           maxConcurrentWorkflowTaskExecutionSize,
@@ -369,6 +388,8 @@ public final class WorkerOptions {
     }
 
     public WorkerOptions validateAndBuildWithDefaults() {
+      Preconditions.checkState(
+          maxActivityTaskPollPerPoller >= 0, "negative maxActivityTaskPollPerPoller");
       Preconditions.checkState(
           maxWorkerActivitiesPerSecond >= 0, "negative maxActivitiesPerSecond");
       Preconditions.checkState(
@@ -398,6 +419,7 @@ public final class WorkerOptions {
       }
 
       return new WorkerOptions(
+          maxActivityTaskPollPerPoller,
           maxWorkerActivitiesPerSecond,
           maxConcurrentActivityExecutionSize == 0
               ? DEFAULT_MAX_CONCURRENT_ACTIVITY_EXECUTION_SIZE
@@ -434,6 +456,7 @@ public final class WorkerOptions {
     }
   }
 
+  private final int maxActivityTaskPollPerPoller;
   private final double maxWorkerActivitiesPerSecond;
   private final int maxConcurrentActivityExecutionSize;
   private final int maxConcurrentWorkflowTaskExecutionSize;
@@ -451,6 +474,7 @@ public final class WorkerOptions {
   private final String buildId;
 
   private WorkerOptions(
+      int maxActivityTaskPollPerPoller,
       double maxWorkerActivitiesPerSecond,
       int maxConcurrentActivityExecutionSize,
       int maxConcurrentWorkflowExecutionSize,
@@ -466,6 +490,7 @@ public final class WorkerOptions {
       boolean disableEagerExecution,
       boolean useBuildIdForVersioning,
       String buildId) {
+    this.maxActivityTaskPollPerPoller = maxActivityTaskPollPerPoller;
     this.maxWorkerActivitiesPerSecond = maxWorkerActivitiesPerSecond;
     this.maxConcurrentActivityExecutionSize = maxConcurrentActivityExecutionSize;
     this.maxConcurrentWorkflowTaskExecutionSize = maxConcurrentWorkflowExecutionSize;
@@ -481,6 +506,10 @@ public final class WorkerOptions {
     this.disableEagerExecution = disableEagerExecution;
     this.useBuildIdForVersioning = useBuildIdForVersioning;
     this.buildId = buildId;
+  }
+
+  public int getMaxActivityTaskPollPerPoller() {
+    return maxActivityTaskPollPerPoller;
   }
 
   public double getMaxWorkerActivitiesPerSecond() {
@@ -565,7 +594,8 @@ public final class WorkerOptions {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     WorkerOptions that = (WorkerOptions) o;
-    return compare(that.maxWorkerActivitiesPerSecond, maxWorkerActivitiesPerSecond) == 0
+    return maxActivityTaskPollPerPoller == that.maxActivityTaskPollPerPoller
+        && compare(that.maxWorkerActivitiesPerSecond, maxWorkerActivitiesPerSecond) == 0
         && maxConcurrentActivityExecutionSize == that.maxConcurrentActivityExecutionSize
         && maxConcurrentWorkflowTaskExecutionSize == that.maxConcurrentWorkflowTaskExecutionSize
         && maxConcurrentLocalActivityExecutionSize == that.maxConcurrentLocalActivityExecutionSize
@@ -585,6 +615,7 @@ public final class WorkerOptions {
   @Override
   public int hashCode() {
     return Objects.hash(
+        maxActivityTaskPollPerPoller,
         maxWorkerActivitiesPerSecond,
         maxConcurrentActivityExecutionSize,
         maxConcurrentWorkflowTaskExecutionSize,
@@ -605,7 +636,9 @@ public final class WorkerOptions {
   @Override
   public String toString() {
     return "WorkerOptions{"
-        + "maxWorkerActivitiesPerSecond="
+        + "maxActivityTaskPollPerPoller="
+        + maxActivityTaskPollPerPoller
+        + ", maxWorkerActivitiesPerSecond="
         + maxWorkerActivitiesPerSecond
         + ", maxConcurrentActivityExecutionSize="
         + maxConcurrentActivityExecutionSize
@@ -635,6 +668,7 @@ public final class WorkerOptions {
         + useBuildIdForVersioning
         + ", buildId='"
         + buildId
+        + '\''
         + '}';
   }
 }

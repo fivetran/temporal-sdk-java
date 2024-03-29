@@ -507,6 +507,7 @@ public final class Worker {
             PollerOptions.newBuilder()
                 .setMaximumPollRatePerSecond(options.getMaxWorkerActivitiesPerSecond())
                 .setPollThreadCount(options.getMaxConcurrentActivityTaskPollers())
+                .setMaximumTaskPollPerPoller(options.getMaxActivityTaskPollPerPoller())
                 .build())
         .setTaskExecutorThreadPoolSize(options.getMaxConcurrentActivityExecutionSize())
         .setMetricsScope(metricsScope)

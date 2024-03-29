@@ -29,6 +29,7 @@ import io.temporal.worker.MetricsType;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,7 +114,8 @@ final class Poller<T> implements SuspendableWorker {
             pollerOptions.getPollThreadNamePrefix(), pollerOptions.getUncaughtExceptionHandler()));
 
     for (int i = 0; i < pollerOptions.getPollThreadCount(); i++) {
-      pollExecutor.execute(new PollLoopTask(new PollExecutionTask()));
+      AtomicInteger pollTaskCount = new AtomicInteger(0);
+      pollExecutor.execute(new PollLoopTask(pollTaskCount, new PollExecutionTask(pollTaskCount)));
       workerMetricsScope.counter(MetricsType.POLLER_START_COUNTER).inc(1);
     }
 
@@ -218,10 +220,12 @@ final class Poller<T> implements SuspendableWorker {
 
   private class PollLoopTask implements Runnable {
 
+    private final AtomicInteger pollTaskCount;
     private final Poller.ThrowingRunnable task;
     private final BackoffThrottler pollBackoffThrottler;
 
-    PollLoopTask(Poller.ThrowingRunnable task) {
+    PollLoopTask(AtomicInteger pollTaskCount, Poller.ThrowingRunnable task) {
+      this.pollTaskCount = pollTaskCount;
       this.task = task;
       this.pollBackoffThrottler =
           new BackoffThrottler(
@@ -287,17 +291,27 @@ final class Poller<T> implements SuspendableWorker {
      * @return true if pollExecutor is terminating, or the current thread is interrupted.
      */
     private boolean shouldTerminate() {
-      return pollExecutor.isShutdown() || Thread.currentThread().isInterrupted();
+      return pollExecutor.isShutdown()
+          || Thread.currentThread().isInterrupted()
+          || (pollerOptions.getMaximumTaskPollPerPoller() != 0
+              && pollTaskCount.get() >= pollerOptions.getMaximumTaskPollPerPoller());
     }
   }
 
   private class PollExecutionTask implements Poller.ThrowingRunnable {
+
+    private final AtomicInteger pollTaskCount;
+
+    private PollExecutionTask(AtomicInteger pollTaskCount) {
+      this.pollTaskCount = pollTaskCount;
+    }
 
     @Override
     public void run() throws Exception {
       T task = pollTask.poll();
       if (task != null) {
         taskExecutor.process(task);
+        pollTaskCount.incrementAndGet();
       }
     }
   }

@@ -52,6 +52,7 @@ public final class PollerOptions {
 
   public static final class Builder {
 
+    private int maximumTaskPollPerPoller;
     private int maximumPollRateIntervalMilliseconds = 1000;
     private double maximumPollRatePerSecond;
     private double backoffCoefficient = 2;
@@ -69,6 +70,7 @@ public final class PollerOptions {
       if (options == null) {
         return;
       }
+      this.maximumTaskPollPerPoller = options.getMaximumTaskPollPerPoller();
       this.maximumPollRateIntervalMilliseconds = options.getMaximumPollRateIntervalMilliseconds();
       this.maximumPollRatePerSecond = options.getMaximumPollRatePerSecond();
       this.backoffCoefficient = options.getBackoffCoefficient();
@@ -79,6 +81,11 @@ public final class PollerOptions {
       this.pollThreadCount = options.getPollThreadCount();
       this.pollThreadNamePrefix = options.getPollThreadNamePrefix();
       this.uncaughtExceptionHandler = options.getUncaughtExceptionHandler();
+    }
+
+    public Builder setMaximumTaskPollPerPoller(int maximumTaskPollPerPoller) {
+      this.maximumTaskPollPerPoller = maximumTaskPollPerPoller;
+      return this;
     }
 
     /** Defines interval for measuring poll rate. Larger the interval more spiky can be the load. */
@@ -171,6 +178,7 @@ public final class PollerOptions {
       }
 
       return new PollerOptions(
+          maximumTaskPollPerPoller,
           maximumPollRateIntervalMilliseconds,
           maximumPollRatePerSecond,
           backoffCoefficient,
@@ -186,6 +194,7 @@ public final class PollerOptions {
 
   private static final Logger log = LoggerFactory.getLogger(PollerOptions.class);
 
+  private final int maximumTaskPollPerPoller;
   private final int maximumPollRateIntervalMilliseconds;
   private final double maximumPollRatePerSecond;
   private final double backoffCoefficient;
@@ -198,6 +207,7 @@ public final class PollerOptions {
   private final String pollThreadNamePrefix;
 
   private PollerOptions(
+      int maximumTaskPollPerPoller,
       int maximumPollRateIntervalMilliseconds,
       double maximumPollRatePerSecond,
       double backoffCoefficient,
@@ -208,6 +218,7 @@ public final class PollerOptions {
       int pollThreadCount,
       Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
       String pollThreadNamePrefix) {
+    this.maximumTaskPollPerPoller = maximumTaskPollPerPoller;
     this.maximumPollRateIntervalMilliseconds = maximumPollRateIntervalMilliseconds;
     this.maximumPollRatePerSecond = maximumPollRatePerSecond;
     this.backoffCoefficient = backoffCoefficient;
@@ -218,6 +229,10 @@ public final class PollerOptions {
     this.pollThreadCount = pollThreadCount;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
     this.pollThreadNamePrefix = pollThreadNamePrefix;
+  }
+
+  public int getMaximumTaskPollPerPoller() {
+    return maximumTaskPollPerPoller;
   }
 
   public int getMaximumPollRateIntervalMilliseconds() {
@@ -263,22 +278,26 @@ public final class PollerOptions {
   @Override
   public String toString() {
     return "PollerOptions{"
-        + "maximumPollRateIntervalMilliseconds="
+        + "maximumTaskPollPerPoller="
+        + maximumTaskPollPerPoller
+        + ", maximumPollRateIntervalMilliseconds="
         + maximumPollRateIntervalMilliseconds
         + ", maximumPollRatePerSecond="
         + maximumPollRatePerSecond
         + ", backoffCoefficient="
         + backoffCoefficient
+        + ", backoffMaximumJitterCoefficient="
+        + backoffMaximumJitterCoefficient
         + ", backoffInitialInterval="
         + backoffInitialInterval
         + ", backoffCongestionInitialInterval="
         + backoffCongestionInitialInterval
         + ", backoffMaximumInterval="
         + backoffMaximumInterval
-        + ", backoffMaximumJitterCoefficient="
-        + backoffMaximumJitterCoefficient
         + ", pollThreadCount="
         + pollThreadCount
+        + ", uncaughtExceptionHandler="
+        + uncaughtExceptionHandler
         + ", pollThreadNamePrefix='"
         + pollThreadNamePrefix
         + '\''
